@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <!-- ใช้ CSS มาตรฐานของ Google Add-ons -->
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <style>
+      .branding-below { bottom: 56px; top: 0; }
+      .form-group { margin-bottom: 15px; }
+      label { font-weight: bold; display: block; margin-bottom: 5px; }
+      .info-box { background: #f1f3f4; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+      .info-item { margin-bottom: 5px; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar branding-below">
+      <form id="updateForm">
+        
+        <div class="info-box">
+          <div class="info-item"><b>ID:</b> <span id="displayId">Loading...</span></div>
+          <div class="info-item"><b>งาน:</b> <span id="displayName">...</span></div>
+          <!-- เพิ่มส่วนแสดงผู้รับผิดชอบ -->
+          <div class="info-item"><b>ผู้รับผิดชอบ:</b> <span id="displayAssignee">...</span></div>
+          <input type="hidden" name="taskId" id="taskId">
+        </div>
+        
+        <div class="form-group">
+          <label for="status">สถานะปัจจุบัน</label>
+          <select name="status" id="status" style="width: 100%;">
+            <option value="Pending">🔴 รอดำเนินการ</option>
+            <option value="In Progress">🟡 กำลังดำเนินการ</option>
+            <option value="Completed">🟢 เสร็จสิ้น</option>
+            <option value="Delayed">⚫ ล่าช้า</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="progress">ความคืบหน้า (%)</label>
+          <input type="number" name="progress" id="progress" min="0" max="100" style="width: 100%;">
+        </div>
+
+        <div class="form-group">
+          <label for="remark">หมายเหตุ / ปัญหา</label>
+          <textarea name="remark" id="remark" rows="4" style="width: 100%;"></textarea>
+        </div>
+
+        <button class="action" id="saveBtn" onclick="submitForm(event)">บันทึกข้อมูล</button>
+        <button id="closeBtn" onclick="google.script.host.close()">ปิด</button>
+        
+        <div id="result" style="margin-top:10px; font-weight:bold;"></div>
+      </form>
+    </div>
+
+    <script>
+      // โหลดข้อมูลเมื่อเปิด Sidebar
+      google.script.run.withSuccessHandler(showData).getSelectedTaskInfo();
+
+      function showData(data) {
+        if (!data) {
+          document.getElementById('displayId').innerText = "-";
+          document.getElementById('displayName').innerText = "กรุณาคลิกเลือกแถวที่มีข้อมูลงาน";
+          document.getElementById('displayAssignee').innerText = "-"; // Reset
+          document.getElementById('saveBtn').disabled = true;
+          return;
+        }
+        document.getElementById('displayId').innerText = data.id;
+        document.getElementById('displayName').innerText = data.name;
+        // แสดงข้อมูลผู้รับผิดชอบ
+        document.getElementById('displayAssignee').innerText = data.assignee || "-";
+        
+        document.getElementById('taskId').value = data.id;
+        document.getElementById('status').value = data.status;
+        document.getElementById('progress').value = data.progress;
+        document.getElementById('remark').value = data.remark;
+      }
+
+      function submitForm(e) {
+        e.preventDefault();
+        document.getElementById('saveBtn').innerText = 'กำลังบันทึก...';
+        document.getElementById('saveBtn').disabled = true;
+        
+        const obj = {
+            taskId: document.getElementById('taskId').value,
+            status: document.getElementById('status').value,
+            progress: document.getElementById('progress').value,
+            remark: document.getElementById('remark').value
+        };
+        
+        google.script.run.withSuccessHandler(function(msg) {
+          document.getElementById('result').style.color = 'green';
+          document.getElementById('result').innerText = msg;
+          document.getElementById('saveBtn').innerText = 'บันทึกข้อมูล';
+          document.getElementById('saveBtn').disabled = false;
+          
+          // ปิด Sidebar อัตโนมัติหลังจาก 1.5 วินาที
+          setTimeout(() => google.script.host.close(), 1500); 
+        }).withFailureHandler(function(err) {
+           document.getElementById('result').style.color = 'red';
+           document.getElementById('result').innerText = 'Error: ' + err.message;
+           document.getElementById('saveBtn').disabled = false;
+        }).updateTaskFromSidebar(obj);
+      }
+    </script>
+  </body>
+</html>
